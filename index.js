@@ -26,7 +26,7 @@ bot.action('reading', (ctx) => {
   ctx.editMessageText(
     'Quyidagi IELTS passagelardan birini tanlang:',
     Markup.inlineKeyboard([
-      [Markup.button.url('📖 Passage 1', `https://cd-reading.netlify.app?user=${ctx.from.id}`)],
+      [Markup.button.url('📖 Passage 1', `https://6885549249cd8655e7050b81--cd-reading.netlify.app/?user=${ctx.from.id}`)],
       [Markup.button.url('📖 Passage 2', `https://cd-reading.netlify.app?user=${ctx.from.id}`)],
       [Markup.button.callback('⬅️ Back', 'back')]
     ])
