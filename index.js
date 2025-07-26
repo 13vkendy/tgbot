@@ -1,72 +1,73 @@
-import { Telegraf, Markup } from 'telegraf';
-import express from 'express';
-import fetch from 'node-fetch';
-import dotenv from 'dotenv';
+const urlParams = new URLSearchParams(window.location.search);
+const userId = urlParams.get('user'); // Telegram foydalanuvchi ID
 
-dotenv.config();
+const questions = [
+  {
+    question: "What is CDI's focus?",
+    options: ["Medicine", "Technology", "Digital Learning", "Music"],
+    correct: 2
+  },
+  {
+    question: "Why is this passage written?",
+    options: ["To confuse", "For entertainment", "IELTS Practice", "News"],
+    correct: 2
+  }
+];
 
-const app = express();
-app.use(express.json());
+function renderQuestions() {
+  const container = document.getElementById("questions");
+  questions.forEach((q, i) => {
+    const block = document.createElement("div");
+    block.className = "mb-4";
+    block.innerHTML = `
+      <p class="font-semibold mb-1">${i + 1}. ${q.question}</p>
+      ${q.options.map((opt, idx) => `
+        <label class="block">
+          <input type="radio" name="q${i}" value="${idx}" class="mr-1"> ${opt}
+        </label>
+      `).join('')}
+      <p id="result${i}" class="mt-1 font-medium"></p>
+    `;
+    container.appendChild(block);
+  });
+}
 
-// ✅ Telegram bot
-const bot = new Telegraf(process.env.BOT_TOKEN);
+function checkAnswers() {
+  let correctCount = 0;
 
-// === BOT MENUSI ===
-bot.start((ctx) => {
-  ctx.reply(
-    `Salom, ${ctx.from.first_name}! IELTS Practice Botga xush kelibsiz.`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback('📚 Reading Passages', 'reading')],
-      [Markup.button.callback('ℹ️ Help', 'help')]
-    ])
-  );
-});
-
-bot.action('reading', (ctx) => {
-  ctx.editMessageText(
-    'Quyidagi IELTS passagelardan birini tanlang:',
-    Markup.inlineKeyboard([
-      [Markup.button.url('📖 Passage 1', `https://YOUR-NETLIFY-LINK.netlify.app/passage1.html?user=${ctx.from.id}`)],
-      [Markup.button.url('📖 Passage 2', `https://YOUR-NETLIFY-LINK.netlify.app/passage2.html?user=${ctx.from.id}`)],
-      [Markup.button.callback('⬅️ Back', 'back')]
-    ])
-  );
-});
-
-bot.action('help', (ctx) => {
-  ctx.editMessageText(
-    'Botdan foydalanish oson:\n\n1️⃣ Passage tanlang\n2️⃣ Web sahifada highlight va test bajaring\n✅ Natijani ko‘ring!',
-    Markup.inlineKeyboard([[Markup.button.callback('⬅️ Back', 'back')]])
-  );
-});
-
-bot.action('back', (ctx) => {
-  ctx.editMessageText(
-    `Salom, ${ctx.from.first_name}! IELTS Practice Botga xush kelibsiz.`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback('📚 Reading Passages', 'reading')],
-      [Markup.button.callback('ℹ️ Help', 'help')]
-    ])
-  );
-});
-
-// === API ENDPOINT ===
-app.post('/result', async (req, res) => {
-  const { userId, correct, total } = req.body;
-  const message = `📊 Natijangiz:\n✅ To‘g‘ri: ${correct}/${total}\n🔥 Davom eting!`;
-
-  await fetch(`https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: userId, text: message })
+  questions.forEach((q, i) => {
+    const selected = document.querySelector(`input[name="q${i}"]:checked`);
+    const result = document.getElementById(`result${i}`);
+    if (selected) {
+      if (parseInt(selected.value) === q.correct) {
+        result.textContent = "✅ Correct";
+        result.className = "text-green-600";
+        correctCount++;
+      } else {
+        result.textContent = `❌ Incorrect. Answer: ${q.options[q.correct]}`;
+        result.className = "text-red-600";
+      }
+    } else {
+      result.textContent = "⚠️ No answer selected";
+      result.className = "text-yellow-600";
+    }
   });
 
-  res.json({ status: 'ok' });
-});
+  if (userId) {
+    fetch('https://tgbot-production-010b.up.railway.app/result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        correct: correctCount,
+        total: questions.length
+      })
+    }).then(() => {
+      alert(`✅ Natija botga yuborildi! Siz ${correctCount}/${questions.length} to‘g‘ri topdingiz.`);
+    });
+  } else {
+    alert(`Siz ${correctCount}/${questions.length} to‘g‘ri topdingiz.`);
+  }
+}
 
-// ✅ Railway uchun PORT sozlash
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ API ishlayapti: ${PORT}`));
-
-bot.launch();
-console.log('✅ Bot ishga tushdi...');
+renderQuestions();
